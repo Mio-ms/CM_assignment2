@@ -1,6 +1,8 @@
 import numpy as np
+from tqdm import tqdm
 import scipy.io.wavfile as wav
 import matplotlib.pyplot as plt
+from scipy import interpolate
 
 
 def findMedian(list):
@@ -27,27 +29,37 @@ def findMedian(list):
 
 def readData(path):
     samplerate, audioData = wav.read(path + "/degraded.wav")
+    samplerate, audioClean = wav.read(path + "/clean.wav")
     position = np.load(path + "/detectionfile.npy")
-    return audioData, position
+    return samplerate, audioData, audioClean, position
 
 
-def replace(audioData, position, windowLength):
+def medianReplace(audioData, position, windowLength):
     if windowLength % 2 == 0:
         print("Please input a odd value.")
         return None
     else:
-        for i in range(len(position)):
+        audioCopy = np.copy(audioData)
+        for i in tqdm(range(len(position))):
             padding = (windowLength - 1) / 2
-            processData = audioData[(position[i] - int(padding)): (position[i] + int(padding))]
+            processData = audioCopy[(position[i] - int(padding)): (position[i] + int(padding) + 1)]
             medianData = findMedian(processData)
-            print(position[i], medianData)
-            audioData[position[i]] = medianData
-        return audioData
+            audioCopy[position[i]] = medianData
+        print("Done")
+        return audioCopy
+
+
+def MSE(audioData, restoreData, position):
+    return np.square(audioData[position] / 32768 - restoreData[position] / 32768).mean()
+# def cubicSpline(audioData, position, windowLength):
 
 
 if __name__ == '__main__':
     path = "/home/jiangmi/tcd/computationalMethod/CM_assignment2"
-    audioData, position = readData(path)
+    samplerate, audioData, audioClean, position = readData(path)
     windowLength = 5
-    modifyData = replace(audioData, position, windowLength)
-    plt.plot(modifyData)
+    audioClean = audioClean / 2
+    restoreData = medianReplace(audioData, position, windowLength)
+    mse = MSE(audioClean, restoreData, position)
+    print(mse)
+    plt.plot(restoreData)
