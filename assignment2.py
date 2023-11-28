@@ -3,6 +3,7 @@ from tqdm import tqdm
 import scipy.io.wavfile as wav
 import matplotlib.pyplot as plt
 from scipy import interpolate
+from scipy.interpolate import CubicSpline
 
 
 def findMedian(list):
@@ -16,14 +17,15 @@ def findMedian(list):
         number of elements, the middle element is returned. If the list has an
         even number of elements, the average of the two middle elements is returned.
     """
+    listCopy = np.copy(list)
     listLength = len(list)
-    list.sort()
+    listCopy.sort()
     if listLength % 2 == 0:
         middlePosition = listLength // 2
-        median = (list[middlePosition] + list[middlePosition - 1]) / 2
+        median = (listCopy[middlePosition] + listCopy[middlePosition - 1]) / 2
     else:
         middlePosition = listLength // 2
-        median = list[middlePosition]
+        median = listCopy[middlePosition]
     return median
 
 
@@ -42,7 +44,8 @@ def medianReplace(audioData, position, windowLength):
         audioCopy = np.copy(audioData)
         for i in tqdm(range(len(position))):
             padding = (windowLength - 1) / 2
-            processData = audioCopy[(position[i] - int(padding)): (position[i] + int(padding) + 1)]
+            processData = audioCopy[(
+                position[i] - int(padding)): (position[i] + int(padding) + 1)]
             medianData = findMedian(processData)
             audioCopy[position[i]] = medianData
         print("Done")
@@ -50,8 +53,31 @@ def medianReplace(audioData, position, windowLength):
 
 
 def MSE(audioData, restoreData, position):
-    return np.square(audioData[position] / 32768 - restoreData[position] / 32768).mean()
-# def cubicSpline(audioData, position, windowLength):
+    try:
+        mse = np.square(audioData[position] / 32768 - restoreData[position] / 32768).mean()
+        return mse
+    except:
+        print('No restore data are input.')
+
+
+def cubicSpline(audioData, position, windowLength):
+    if windowLength % 2 == 0:
+        print("Please input a odd value.")
+        return None
+    else:
+        audioCopy = np.copy(audioData)
+        for i in range(len(position)):
+            padding = (windowLength - 1) / 2
+            index = [(position[i] - int(padding)), (position[i] + int(padding))]
+            x = np.linspace(index[0], index[1], windowLength)
+            cubicSplineX = np.delete(x, int(padding))
+            cubicSplineY = np.delete(
+                audioCopy[index[0]: index[1] + 1], int(padding))
+            cs = CubicSpline(cubicSplineX, cubicSplineY)
+            xInterp = np.linspace(index[0], index[1], 51)
+            yInterp = cs(xInterp)
+            audioCopy[position[i]] = yInterp[25]
+        return audioCopy
 
 
 if __name__ == '__main__':
@@ -59,7 +85,8 @@ if __name__ == '__main__':
     samplerate, audioData, audioClean, position = readData(path)
     windowLength = 5
     audioClean = audioClean / 2
-    restoreData = medianReplace(audioData, position, windowLength)
-    mse = MSE(audioClean, restoreData, position)
-    print(mse)
-    plt.plot(restoreData)
+    medianRestoreData = medianReplace(audioData, position, windowLength)
+    cubicRestoreData = cubicSpline(audioData, position, windowLength)
+    medianMse = MSE(audioClean, medianRestoreData, position)
+    cubicMse = MSE(audioClean, cubicRestoreData, position)
+    print(medianMse, cubicMse)
