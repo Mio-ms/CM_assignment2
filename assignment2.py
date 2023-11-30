@@ -3,6 +3,7 @@ import numpy as np
 import unittest
 import matplotlib.pyplot as plt
 import scipy.io.wavfile as wav
+import sounddevice as sd
 from scipy.io.wavfile import write
 from scipy.interpolate import CubicSpline
 from tqdm import tqdm
@@ -242,6 +243,10 @@ if __name__ == '__main__':
     cubicRestoreData = cubicSpline(audioData, position, 5)
     plotAudioSignals(audioData, medianRestoreData,
                      cubicRestoreData, audioClean)
+    sd.play(medianRestoreData, samplerate)
+    time.sleep(10)
+    sd.play(cubicRestoreData, samplerate)
+    time.sleep(10)
     # saveAsWav(medianRestoreData, samplerate, 'output_medianFilter.wav')
     # saveAsWav(cubicRestoreData, samplerate, 'output_cubicSplines.wav')
     unittest.main()
