@@ -12,6 +12,7 @@ This toolkit provides functionalities for audio restoration, specifically focusi
 - NumPy
 - tqdm
 - SciPy
+- sounddevice
 - Matplotlib
 
 ---
